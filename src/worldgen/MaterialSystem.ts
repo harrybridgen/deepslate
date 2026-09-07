@@ -167,9 +167,9 @@ export class MaterialRuleContext {
 
 	public getNoiseSampler(noiseId: Identifier, is3d: boolean) {
 		if (is3d) {
-			return computeIfAbsent(this.noiseSamplers2d, noiseId.toString(), () => this.createNoiseSampler2d(noiseId))
+			return computeIfAbsent(this.noiseSamplers2d, noiseId.toString(), () => this.createNoiseSampler3d(noiseId))
 		} else {
-			return computeIfAbsent(this.noiseSamplers3d, noiseId.toString(), () => this.createNoiseSampler3d(noiseId))
+			return computeIfAbsent(this.noiseSamplers3d, noiseId.toString(), () => this.createNoiseSampler2d(noiseId))
 		}
 	}
 
@@ -310,7 +310,7 @@ export namespace MaterialCondition {
 		switch (type) {
 			case 'above_preliminary_surface': return new AbovePreliminarySurface()
 			case 'biome': return new Biome(
-				HolderSet.fromJson(WorldgenRegistries.BIOME, root.biome_is),
+				HolderSet.parser(WorldgenRegistries.BIOME)(root.biome_is),
 			)
 			case 'noise_threshold': return new NoiseThreshold(
 				Identifier.parse(Json.readString(root.noise) ?? ''),
@@ -375,12 +375,12 @@ export namespace MaterialCondition {
 
 	export class Biome extends MaterialCondition {
 		constructor(
-			private readonly biomes: HolderSet<{}>,
+			private readonly biomes: Holder<HolderSet<{}>>,
 		) {
 			super()
 		}
 		compile(context: MaterialRuleContext): ConditionEvaluator {
-			const biomeSet = new Set(Array(...this.biomes.getEntries()).map(h => h.key()!.toString()))
+			const biomeSet = new Set(Array(...this.biomes.value().getEntries()).map(h => h.key()!.toString()))
 			return lazyYCondition(context, () => {
 				return biomeSet.has(context.getBiome().toString())
 			})
