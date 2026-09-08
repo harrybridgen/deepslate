@@ -25,6 +25,38 @@ export namespace BiomeSource {
 		}
 	}
 
+	/**
+	 * Every distinct biome found in the block-space cube of radius `r` around
+	 * `(x, y, z)`, sampled on the quart grid. Mirrors vanilla's
+	 * `BiomeSource#getBiomesWithin`: a dense triple loop over quart positions,
+	 * built entirely on the existing single-point {@link getBiome}, since
+	 * that is all vanilla's own implementation does too.
+	 */
+	export function getBiomesWithin(biomeSource: BiomeSource, x: number, y: number, z: number, r: number, sampler: Climate.Sampler): Set<string> {
+		const x0 = (x - r) >> 2
+		const y0 = (y - r) >> 2
+		const z0 = (z - r) >> 2
+		const x1 = (x + r) >> 2
+		const y1 = (y + r) >> 2
+		const z1 = (z + r) >> 2
+		const w = x1 - x0 + 1
+		const d = y1 - y0 + 1
+		const h = z1 - z0 + 1
+
+		const biomes = new Set<string>()
+		for (let row = 0; row < h; row += 1) {
+			for (let column = 0; column < w; column += 1) {
+				for (let depth = 0; depth < d; depth += 1) {
+					const noiseX = x0 + column
+					const noiseY = y0 + depth
+					const noiseZ = z0 + row
+					biomes.add(biomeSource.getBiome(noiseX, noiseY, noiseZ, sampler).toString())
+				}
+			}
+		}
+		return biomes
+	}
+
 	export function findBiomeHorizontal(biomeSource: BiomeSource, centerX: number, y: number, centerZ: number, range: number, predicate: (biome: Identifier) => boolean, random: Random, sampler: Climate.Sampler, step: number = 1, searchFromCenter: boolean = false) {
 		if (biomeSource instanceof FixedBiomeSource){
 			if (predicate(biomeSource.getBiome())){

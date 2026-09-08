@@ -2,7 +2,7 @@ import { BlockPos, Holder, HolderSet, Identifier, Registry, Rotation } from '../
 import type { Random } from '../../math/index.js'
 import { LegacyRandom } from '../../math/index.js'
 import { Json } from '../../util/Json.js'
-import type { BiomeSource } from '../biome/index.js'
+import { BiomeSource } from '../biome/index.js'
 import { Heightmap } from '../Heightmap.js'
 import { HeightProvider } from '../HeightProvider.js'
 import type { LevelHeight } from '../LevelHeight.js'
@@ -343,8 +343,39 @@ export namespace WorldgenStructure {
 	}
 
 	export class OceanMonumentStructure extends WorldgenStructure {
-		public findGenerationPoint(chunkX: number, chunkZ: number): BlockPos | undefined {
-			throw new Error('Method not implemented.')
+		public findGenerationPoint(chunkX: number, chunkZ: number, _: Random, context: WorldgenStructure.GenerationContext): BlockPos | undefined {
+			// A monument is large enough that placing it on the center point
+			// alone can leave it clipping into land or shallow water. Vanilla
+			// instead requires every biome within 29 blocks of the chunk's
+			// offset-9 point, sampled at sea level, to be tagged as suitable
+			// monument surroundings - if even one nearby biome fails that, the
+			// whole placement is rejected before a height is ever picked.
+			//
+			// Resolved fresh every call rather than cached: this app can switch
+			// Minecraft version without a page reload, and a cached tag would
+			// silently keep serving the previous version's data across that
+			// switch. The area scan below already dominates the cost of a call.
+			const offsetX = (chunkX << 4) + 9
+			const offsetZ = (chunkZ << 4) + 9
+			const seaLevel = context.settings.seaLevel
+
+			const nearbyBiomes = BiomeSource.getBiomesWithin(
+				context.biomeSource, offsetX, seaLevel, offsetZ, 29, context.randomState.sampler)
+
+			const tag = HolderSet.parser(WorldgenRegistries.BIOME)('#minecraft:required_ocean_monument_surrounding').value()
+			const requiredIds = new Set(
+				[...tag.getEntries()]
+					.map(holder => holder.key()?.toString())
+					.filter((id): id is string => id !== undefined)
+			)
+
+			for (const biome of nearbyBiomes) {
+				if (!requiredIds.has(biome)) {
+					return undefined
+				}
+			}
+
+			return this.onTopOfChunkCenter(context, chunkX, chunkZ, 'OCEAN_FLOOR_WG')
 		}
 	}
 
