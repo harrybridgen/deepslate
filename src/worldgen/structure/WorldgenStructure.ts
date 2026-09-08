@@ -271,11 +271,11 @@ export namespace WorldgenStructure {
 		}
 
 		public findGenerationPoint(chunkX: number, chunkZ: number, _: Random, context: WorldgenStructure.GenerationContext): BlockPos | undefined {
-			if (this.getLowestY(context, chunkX << 4, chunkZ << 4, this.width, this.depth) < context.settings.seaLevel) {
-				return undefined
-			} else {
-				return this.onTopOfChunkCenter(context, chunkX, chunkZ)
-			}
+			// Desert pyramid and jungle temple are the only structures built on
+			// this base, and vanilla places both straight onto the surface
+			// heightmap with no sea-level gate. That gate belongs to ocean-anchored
+			// structures, not these two, and was rejecting valid placements.
+			return this.onTopOfChunkCenter(context, chunkX, chunkZ)
 		}
 	}
 
